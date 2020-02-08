@@ -1,0 +1,100 @@
+package com.example.bluetooth;
+
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AppCompatActivity;
+
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothManager;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.Build;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.TextView;
+import android.widget.Toast;
+
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+    Button b1,b2;
+    TextView tv;
+    BluetoothAdapter ad;
+    BluetoothManager bm;
+    String names="";
+
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        b1=findViewById(R.id.button);
+        b2=findViewById(R.id.button2);
+        tv=findViewById(R.id.textView);
+        b1.setOnClickListener(this);
+        b2.setOnClickListener(this);
+        bm=(BluetoothManager)getSystemService(BLUETOOTH_SERVICE);
+        ad=bm.getAdapter();
+        //Second Way
+        ad=BluetoothAdapter.getDefaultAdapter();
+
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        if(requestCode==1 && requestCode==RESULT_OK)
+        {
+            String name = ad.getName();
+            String addr = ad.getAddress();
+            tv.setText(name + "," + addr);
+        }else{
+            Toast.makeText(this, "User Rejected To Enable Bluetooth", Toast.LENGTH_SHORT).show();
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    @Override
+    public void onClick(View v) {
+        if(v.getId()==R.id.button){
+            if(ad.isEnabled()){
+                String name=ad.getName();
+                String addr=ad.getAddress();
+                tv.setText(name+","+addr);
+            }else{
+                Toast.makeText(this, "enable bluetooth", Toast.LENGTH_SHORT).show();
+                Intent it=new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                startActivityForResult(it,1);
+            }
+        }else{
+            final String start=BluetoothAdapter.ACTION_DISCOVERY_STARTED;
+            final String st=BluetoothAdapter.ACTION_DISCOVERY_FINISHED;
+            BroadcastReceiver br=new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    Log.i("Action",intent.getAction());
+                    if(intent.getAction()==start){
+                        Toast.makeText(MainActivity.this, "Discovery Started", Toast.LENGTH_SHORT).show();
+                    }
+                    if(intent.getAction()==st){
+                        tv.setText(names);
+                        Toast.makeText(MainActivity.this, "Discovery Finished", Toast.LENGTH_SHORT).show();
+                    }
+                    if(intent.getAction()== BluetoothDevice.ACTION_FOUND){
+                        String name=intent.getStringExtra(BluetoothDevice.EXTRA_NAME);
+                        Log.i("names",name);
+                        names+=","+name;
+                        Toast.makeText(MainActivity.this, ""+name, Toast.LENGTH_SHORT).show();
+                    }
+                }
+            };
+            registerReceiver(br,new IntentFilter(start));
+            registerReceiver(br,new IntentFilter(st));
+            registerReceiver(br,new IntentFilter(BluetoothDevice.ACTION_FOUND));
+            ad.startDiscovery();
+        }
+
+    }
+}
